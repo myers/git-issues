@@ -1,0 +1,6 @@
+{
+  "key": "every-mutating-jjf-call-inside-the-source-repo",
+  "value": "every mutating jjf call inside the source repo needs JJF_ALLOW_SELF_HOST=1; recover HEAD after",
+  "created_at": "2026-06-23T02:45:47Z",
+  "updated_at": "2026-06-23T02:45:47Z"
+}
