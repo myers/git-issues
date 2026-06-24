@@ -4,7 +4,7 @@
   "title": "Partial-id prefix lookup is broken (or CLAUDE.md is wrong)",
   "slug": "prefix-lookup-broken",
   "body": "# Symptom\n\nCLAUDE.md teaches that `jjf` accepts \"any unambiguous prefix\n(often 4 characters is enough)\". In practice, partial-id\nprefix lookup does NOT work — every verb that resolves a\nhandle requires the full 7-char id.\n\n# Repro\n\nIn `~/p/jjforge` (the live planner):\n\n```\n$ jjf show --json 9566\n{\"ok\":false,\"error\":{\"kind\":\"slug_not_found\",\n  \"message\":\"no issue with handle \\\"9566\\\"\"}}\n$ jjf show --json 9566f5\n{\"ok\":false,\"error\":{\"kind\":\"slug_not_found\", ...}}\n$ jjf show --json 9566f52\n{...full issue payload...}\n```\n\n# Verdict — choose one\n\n1. **The feature regressed**: restore prefix lookup. Agents\n   and humans routinely abbreviate ids; matching the CLAUDE.md\n   contract avoids a UX papercut on every interaction.\n2. **The feature never worked**: update CLAUDE.md to remove the\n   \"often 4 characters is enough\" claim, and either (a) document\n   that the displayed id IS the full id, no abbreviation, or\n   (b) file the feature ask as new work.\n\n# Subordinate issue\n\nWhen prefix-or-id lookup fails, the error kind is\n`slug_not_found`. For a hex-shaped handle this is misleading —\nthe user typed a (partial) id, not a slug. Splitting into\n`id_not_found` / `slug_not_found` / `ambiguous_prefix` (or\nrenaming to `handle_not_found`) tightens the contract.\n\n# Confidence\n\nReproducible 100%. Tested in `~/p/jjforge` and in\n`scratchpad/qa/r05-race/`.\n",
-  "status": "open",
+  "status": "closed",
   "block_reason": null,
   "type": "bug",
   "labels": [
