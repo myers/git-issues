@@ -1,0 +1,6 @@
+{
+  "key": "jj-user-name-is-tester",
+  "value": "the jj user.name in this repo is 'Tester' — placeholder, not real. set yours via 'jj config set --repo user.name <name>' before claiming, otherwise the assignee field reads 'Tester' on every claim",
+  "created_at": "2026-06-23T03:21:06Z",
+  "updated_at": "2026-06-23T03:21:06Z"
+}
