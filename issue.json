@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "id": "0c0e7d8",
+  "title": "First 'jjf pull' from a fresh clone exits 1 (meta/format-version divergence)",
+  "slug": "pull-exits-1-from-fresh-clone",
+  "body": "# Symptom\n\nAfter cloning a jjforge project and running `jjf init`, the\nfirst `jjf pull origin` exits 1 with:\n\n```\njjf: invalid input: diverged ref refs/jjf/meta/format-version\nnot in a known v3 namespace (stem=meta/format-version);\nrefusing to merge\n```\n\nThe actual data (issues, memories) DOES land, but the exit\ncode breaks any automation that gates on success.\n\n# Repro\n\n```\n$ jj git clone --colocate central.git bob\n$ cd bob && jjf init\n$ jjf pull origin\njjf: invalid input: diverged ref refs/jjf/meta/format-version\nnot in a known v3 namespace (stem=meta/format-version);\nrefusing to merge\n$ echo $?\n1\n$ jjf ls    # data is there\n6cd59a5  open  ...  Alice's bug\n```\n\n# Root cause\n\n`jjf init` writes a fresh `refs/jjf/meta/format-version` commit.\nWhen the pull fetches the remote's `format-version` (different\nSHA but logically same value), the per-ref merge driver refuses\nto merge because `meta/` is outside the known v3 namespaces\n(`issues/`, `memories/`).\n\n# Fix candidates\n\n1. Exclude `refs/jjf/meta/*` from the per-ref merge consideration\n   — the meta refs are content-addressed metadata; either side's\n   value is acceptable.\n2. First-writer-wins on `meta/*` (prefer remote on conflict, or\n   skip them entirely).\n3. Delete `format-version` from the protocol if it isn't being\n   read (see F-010).\n\n# Cross-links\n\nSame root cause as F-001 / F-003 / F-010. See epic for the\noverall plan.\n\n# Confidence\n\nReproducible 100% on every fresh clone. Tested in\n`scratchpad/qa/r04-sync/bob`.\n",
+  "status": "open",
+  "block_reason": null,
+  "type": "bug",
+  "labels": [
+    "epic:multi-project-readiness"
+  ],
+  "dependencies": [
+    {
+      "target": "52ee82d",
+      "kind": "blocks"
+    }
+  ],
+  "assignee": null,
+  "created_at": "2026-06-24T17:32:23Z",
+  "updated_at": "2026-06-24T17:32:23Z"
+}
