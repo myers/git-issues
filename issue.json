@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "id": "8034dc1",
+  "title": "'jjf push' from a fresh clone exits 1, forever (meta/format-version non-fast-forward)",
+  "slug": "push-exits-1-from-fresh-clone",
+  "body": "# Symptom\n\nEvery `jjf push origin` from a fresh clone exits 1 — and never\nself-heals. The actual issue/memory data pushes successfully,\nbut the push refspec also tries to push the local\n`refs/jjf/meta/format-version`, which is non-fast-forward\nagainst the remote's.\n\n# Repro\n\n```\n$ jjf push origin\njjf: push to origin rejected: ...\n ! [rejected]  refs/jjf/meta/format-version\n   -> refs/jjf/meta/format-version (non-fast-forward)\n$ echo $?\n1\n# Repeat after `jjf pull origin` — still exit 1.\n# Repeat after any local change — still exit 1, forever.\n```\n\n# Root cause\n\nThe push refspec is `refs/jjf/*:refs/jjf/*`. The local\n`format-version` commit (written by `jjf init`) diverges from\nthe remote's; non-fast-forward rejection sticks the exit code\nat 1 even when all data successfully pushed.\n\n# Fix candidate\n\nExclude `meta/*` from the push refspec (same root cause as\nF-002 — same fix probably resolves both). Or stop tracking\n`format-version` as a writable ref altogether (see F-010).\n\n# Cross-links\n\nSame cluster: F-001 / F-002 / F-010.\n\n# Confidence\n\nReproducible 100% on every fresh clone, on every push.\n",
+  "status": "open",
+  "block_reason": null,
+  "type": "bug",
+  "labels": [
+    "epic:multi-project-readiness"
+  ],
+  "dependencies": [
+    {
+      "target": "52ee82d",
+      "kind": "blocks"
+    }
+  ],
+  "assignee": null,
+  "created_at": "2026-06-24T17:32:24Z",
+  "updated_at": "2026-06-24T17:32:24Z"
+}
