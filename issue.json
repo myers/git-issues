@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "id": "52ee82d",
+  "title": "Epic: multi-project-readiness — solidify jjf across N projects and machines",
+  "slug": "multi-project-readiness",
+  "body": "# Goal\n\n`jjf` should hold up as the issue tracker across ~10 projects\nwith multiple collaborators, multiple machines per person, and\nagent-driven automation gated on exit codes. Today the\nsingle-repo experience is solid, but multi-machine adoption\nis blocked by three CRITICAL bugs (F-001 / F-002 / F-003) that\nshare a root cause around `refs/jjf/meta/format-version`.\n\nEnd state: a brand-new collaborator runs the documented clone\nrecipe, sees every issue on first `jjf ls`, and every `jjf\npull` / `jjf push` exits 0 cleanly.\n\n# Approach\n\nThe work splits into three categories:\n\n1. **Sync fidelity (criticals).** Fix the meta-ref handling so\n   clone-then-pull-then-push round-trips exit 0. Likely one or\n   two small commits in the storage + push/pull layers.\n\n2. **Graph integrity (highs).** Reject dep cycles at write time;\n   add a `jjf doctor` (or `jjf dep ls`) verb so an admin can\n   audit graph and ref health.\n\n3. **Sharp edges (mediums + docs).** Slug-recycle policy,\n   corrupt-ref reporting, error-kind taxonomy, CLAUDE.md /\n   quickstart updates pulled out of the QA findings.\n\n# Provenance\n\nFindings sourced from an adversarial QA pass on 2026-06-24\ncovering quickstart literal-follow, multi-clone sync, concurrent\nwriters, JSON contract, dep graph, storage corruption, roadmap\nsingleton, and memory/edge-case probing. Full report:\n`scratchpad/qa/findings.md` (preserved out of tree).\n\n# Child inventory\n\nDiscover via `jjf ls --label epic:multi-project-readiness\n--status all` once children are filed.\n",
+  "status": "open",
+  "block_reason": null,
+  "type": "epic",
+  "labels": [
+    "epic"
+  ],
+  "dependencies": [],
+  "assignee": null,
+  "created_at": "2026-06-24T17:31:42Z",
+  "updated_at": "2026-06-24T17:31:42Z"
+}
