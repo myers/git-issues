@@ -4,7 +4,7 @@
   "title": "refs/jjf/meta/format-version is unvalidated — delete it or actually read it",
   "slug": "format-version-unvalidated",
   "body": "# Symptom\n\n`refs/jjf/meta/format-version` can be pointed at arbitrary\nobjects (including non-commit blobs) and jjf continues to work\nfine. The ref appears to be dead weight in the current code\npath, yet it generates the F-001/F-002/F-003 papercuts because\nit participates in the push/pull/merge set.\n\n# Repro\n\n```\n# point format-version at a random blob\ngit update-ref refs/jjf/meta/format-version \\\n  $(git hash-object -w --stdin <<<\"garbage\")\n\n$ jjf ls       # 34a30c5 open  ...\n$ jjf new ...  # ok=true\n$ jjf show ... # works\n# Nothing flags the corrupted format-version.\n```\n\n# Implications\n\nOne of:\n\n1. **Delete the ref from the protocol.** If it isn't validated\n   on read, it has no value as a sentinel. Removing it from the\n   stored ref set also resolves F-001/F-002/F-003 in the\n   cleanest way.\n2. **Actually read it and refuse to operate on a mismatched\n   version.** The point of `format-version` was to gate against\n   accidental downgrades; that gate doesn't exist today. If\n   we're keeping the ref, the storage layer should refuse to\n   open a repo whose `format-version` it doesn't recognize.\n\nEither choice resolves the meta/* cluster. The current\nin-between state is the worst of both worlds.\n\n# Cross-links\n\nF-001 / F-002 / F-003 — same root cause cluster. The meta/*\nfix likely lands once for all four.\n\n# Confidence\n\nReproducible 100%. Tested in `scratchpad/qa/r07b-corrupt2/`.\n",
-  "status": "open",
+  "status": "closed",
   "block_reason": null,
   "type": "bug",
   "labels": [
