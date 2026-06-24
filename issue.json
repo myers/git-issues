@@ -5,6 +5,7 @@
   "slug": "roadmap",
   "body": "This ticket is the running roadmap. Open epics appear in the order\nthey should be tackled. As work shifts, the order shifts, and the\nbody is edited in place (`jjf update 9566f52 --body-file new.md`).\n\n**This ticket never closes.**\n\n# Current priority order (as of 2026-06-22, post git-bug cutover)\n\nAbove the line: shipping next. Below the line: queued behind the\nshipping work.\n\n1. **`epic:agent-ergonomics`** (`5a755ec`) — `ready`, `remember`,\n   atomic claim, MCP server. The CLI verb set, the JSON contract, AND\n   the sync loop are now all in place — this is the natural next epic.\n\n2. **`epic:mvp-cli`** (`a5f8122`) — effectively done.\n   `cli-replace-shim` remains; **unblocked** as of the cutover\n   (migration decision = B = start fresh, recorded in archived\n   git-bug `d12031c`). Flipping `bin/jjf` from a `git-bug` shell\n   shim into a thin Rust-binary wrapper (or dropping it entirely)\n   is the last piece of `epic:mvp-cli`.\n\n3. **`epic:mvp-sync`** (`54caedd`) — feature-complete. Will only\n   re-surface if a real consumer uncovers a gap.\n\n4. **`epic:mvp-storage`** (`f21b950`) — feature-complete.\n\n---\n\n5. **`epic:multi-client`** (`99f01ed`) — sketched. Don't pull above\n   the line until the MVP path closes.\n\n6. **`epic:project-agent-orchestration`** (`585b84b`) — sketched,\n   vision-level.\n\n# Reader's contract\n\n- The body above IS the truth. When priorities shift, edit the body\n  via `jjf update 9566f52 --body-file <path>` and (optionally) drop\n  a `jjf comment 9566f52` announcing the change.\n- For \"what exists\" — every issue, by label, by status — use the\n  jjforge queries in `CLAUDE.md`, not a maintained index.\n- Don't expand scope into epics below the line until this roadmap\n  explicitly pulls them up.\n\n# History\n\nThis ticket was re-filed in jjforge on 2026-06-22 during the git-bug\ncutover (decision in archived git-bug ticket `d12031c` — see\n`git-bug bug show d12031c` against `refs/bugs/*`). The pre-cutover\nticket lived at archived `6a65c0d`; its comment history (seven status\nupdates 2026-06-21 through 2026-06-22 carrying the priority changes\nand the migration design call) is preserved in git refs and read via\n`git-bug bug show 6a65c0d`.\n\nThe cutover doc at `docs/git-bug-cutover.md` is the bridge.\n",
   "status": "open",
+  "block_reason": null,
   "type": "roadmap",
   "labels": [
     "roadmap"
@@ -12,5 +13,5 @@
   "dependencies": [],
   "assignee": null,
   "created_at": "2026-06-22T14:51:02Z",
-  "updated_at": "2026-06-22T20:49:51Z"
+  "updated_at": "2026-06-23T13:50:52Z"
 }
