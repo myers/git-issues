@@ -4,7 +4,7 @@
   "title": "host-asterinas-search: jjf search <query> over bodies/titles/comments",
   "slug": "host-asterinas-search",
   "body": "# Goal\n\nFull-text search across issue bodies, titles, and comments.\nBeads-style `bd search \"<query>\"` returning matching issue ids\nwith snippet context.\n\n# Why now\n\n`host-asterinas-audit` (1588625) identified this as one of two\nbeads primitives jjforge actually needs to host the 968-issue\nasterinas tree queryably. Asterinas's prose-tagged conventions\n(Workflow narrative, Status with date stamps, \"Found by:\"\nattribution) live in bodies; without `search`, the daily query\n\"what tickets discuss DMA coherence?\" becomes\n`jjf ls --json | jq -r '.[].body' | grep` — works, but doesn't\nscale to 968 issues for orchestration.\n\n# Sketch\n\n## CLI\n\n```\njjf search <query> [--status <s>] [--label <l>] [--type <t>] \\\n                   [--limit N] [--include-comments] [--json]\n```\n\nDefault: substring match against `title` and `body`. With\n`--include-comments`, also matches comment bodies.\n\n## Output\n\nPlain text: one line per match, `id  title  …snippet…`. JSON:\n`[{id, title, score, snippet, matched_field}]`. Match snippet\nis +/-40 chars around the first hit; `--snippet-context N`\nflag tunable.\n\n## Storage\n\nThe snapshot cache (commit `69f3043`) already materializes\nevery body in memory at read time. Add a `search` method on\n`Storage` that walks the snapshot and runs case-insensitive\nsubstring match — first pass, no regex, no tokenization, no\nranking beyond match count.\n\nIf 968-issue scale shows the substring scan to be slow, add a\nnaive inverted index (lowercase-word → ids) as a second cache\nlayer. Defer that until benchmarks show the need.\n\n## Spec bump\n\nStorage spec stays at v2.5 — this is a new query verb, not a\nnew field or op. Document the new CLI verb in `docs/cli-json.md`.\n\n# Out of scope\n\n- Regex search. Substring is enough for the asterinas migration's\n  needs.\n- Fuzzy matching / edit distance.\n- Ranking-by-relevance (BM25 / TF-IDF). Beads returns\n  exact-match-first; we do the same.\n- Indexing of memories. They have their own `jjf memories\n  <substring>` already.\n\n# Acceptance\n\n- [ ] `jjf search \"<query>\"` returns issue ids with title and\n      snippet, default 20-row limit.\n- [ ] `--json` envelope returns `{ok: true, results: [...]}`.\n- [ ] `--include-comments` searches comment bodies too.\n- [ ] `--status` / `--label` / `--type` filters compose (AND\n      semantics with the search query).\n- [ ] Subsecond on the 968-issue asterinas tree (the snapshot\n      cache makes this trivial).\n- [ ] Tests cover empty query, no-match, multi-field hits,\n      `--include-comments` toggle.\n",
-  "status": "open",
+  "status": "closed",
   "block_reason": null,
   "type": "feature",
   "labels": [
@@ -18,5 +18,5 @@
   ],
   "assignee": null,
   "created_at": "2026-06-23T15:05:49Z",
-  "updated_at": "2026-06-26T23:25:54Z"
+  "updated_at": "2026-06-26T23:25:59Z"
 }
