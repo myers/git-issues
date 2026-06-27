@@ -4,7 +4,7 @@
   "title": "actor-chain smoke test",
   "slug": null,
   "body": "",
-  "status": "in-progress",
+  "status": "abandoned",
   "block_reason": null,
   "type": "bug",
   "priority": null,
@@ -12,5 +12,5 @@
   "dependencies": [],
   "assignee": "bob",
   "created_at": "2026-06-27T21:03:14Z",
-  "updated_at": "2026-06-27T21:03:18Z"
+  "updated_at": "2026-06-27T21:03:19Z"
 }
