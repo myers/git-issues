@@ -4,7 +4,7 @@
   "title": "Add jjf assign <id> <name> shorthand verb",
   "slug": "assign-verb",
   "body": "# Goal\n\nAdd `jjf assign <id> <name>` as a short verb. Today this is\n`jjf update <id> --assignee <name>` — works fine, but is\nverbose at the keyboard and verbose in scripts. Beads\nships `bd assign <id> <name>` as exactly this sugar (see\n`reference/beads/cmd/bd/assign.go`).\n\n# Spec\n\n```\njjf assign <id> <name>           # set assignee\njjf assign <id> \"\"               # unset (mirrors bd's pattern)\njjf assign --json <id> <name>    # JSON envelope\n```\n\nSemantically identical to `jjf update <id> --assignee <name>`\nand `jjf update <id> --unset-assignee` respectively. Same\npreflight (issues_bookmark probe, handle resolution), same\ntyped errors (`issue_not_found` / `slug_not_found` /\n`invalid_input` on newline-bearing name).\n\n# Why now\n\nLow-cost agent-ergonomics polish. The asterinas migration\nfan-out (`cc2fa96`) and any orchestrator that batches\nissue-assignment ops benefits from one fewer flag per\ncall. Cheap.\n\n# Out of scope\n\n- Implicit \"current user\" assign — `jjf assign <id>` with\n  no name argument. That's what `--claim` already does\n  (and it also flips status to `in-progress`). The\n  shorthand keeps the assign-only semantic clean and\n  separate.\n- Multi-assignee. `assignee` is a single string today;\n  this isn't the ticket to change that.\n- Bulk assign (`jjf assign --label <l> <name>`). Maybe\n  later; out of scope here.\n\n# Implementation sketch\n\n`Commands::Assign { id: String, name: String }` at\n`crates/jjf/src/main.rs`. `run_assign` dispatches to\nthe existing `Storage::set_assignee` (the same path\n`run_update` uses with `--assignee`). Empty `name`\ncalls `set_assignee(id, None)`. Probably ~40 lines\nincluding doc comment, mirroring the existing\n`run_close` / `run_open` thin-wrapper pattern.\n\nPlain-text output: `assigned <id> to <name>` /\n`unassigned <id>`. JSON envelope:\n`{\"ok\":true,\"id\":\"...\",\"assignee\":\"alice\"}` or\n`{\"ok\":true,\"id\":\"...\",\"assignee\":null}`.\n\n# Acceptance\n\n- [ ] `jjf assign <id> alice` writes assignee = alice.\n- [ ] `jjf assign <id> \"\"` clears the assignee.\n- [ ] `--json` envelope as above.\n- [ ] CLI integration test mirroring the existing\n      `crates/jjf/tests/` patterns.\n- [ ] `docs/cli-json.md` per-verb section.\n\n# Depends on\n\nIndependent of the actor-override ticket (`ae0866b`).\nEither can ship first; both can ship together.\n\n# Cross-refs\n\n- Beads' impl: `reference/beads/cmd/bd/assign.go`.\n- jjforge's existing `Storage::set_assignee`:\n  `crates/jjf-storage/src/lib.rs` (grep `pub fn set_assignee`).\n",
-  "status": "open",
+  "status": "closed",
   "block_reason": null,
   "type": "feature",
   "priority": null,
@@ -14,5 +14,5 @@
   "dependencies": [],
   "assignee": null,
   "created_at": "2026-06-27T20:18:46Z",
-  "updated_at": "2026-06-27T20:25:03Z"
+  "updated_at": "2026-06-27T20:25:08Z"
 }
