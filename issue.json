@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "id": "f7b27b6",
+  "title": "actor-chain orchestrator smoke",
+  "slug": null,
+  "body": "",
+  "status": "open",
+  "block_reason": null,
+  "type": "bug",
+  "priority": null,
+  "labels": [],
+  "dependencies": [],
+  "assignee": null,
+  "created_at": "2026-06-27T21:07:20Z",
+  "updated_at": "2026-06-27T21:07:20Z"
+}
