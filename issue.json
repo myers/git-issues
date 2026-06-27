@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "id": "0fd6759",
+  "title": "README still describes the pre-v3  bookmark storage model",
+  "slug": "readme-stale-bookmark",
+  "body": "# Goal\n\nReconcile `README.md` to the v3 storage model. The README still\ndescribes the pre-cutover `issues` bookmark contract; v3 storage\n(shipped 2026-06-24 in epic `bd98097 storage-v3-out-of-tree`)\nmoved to a per-issue ref namespace under `refs/jjf/*`. The\nquickstart at `docs/quickstart.md` is already correct; the\nREADME contradicts it.\n\n# Repro / observed\n\nFrom the fj issue (claude@github.com):\n\n```\n$ jj bookmark list\n(empty — no `issues` bookmark)\n\n$ git for-each-ref refs/jjf\n... refs/jjf/issues/<id>     # one ref per issue\n... refs/jjf/memories/<key>  # one ref per memory\n... refs/jjf/meta/format-version  # sentinel\n```\n\nStorage is exactly what `docs/quickstart.md` describes — and what\nthe README does NOT.\n\n# Stale claims in README to fix\n\n1. \"Issues live as commits on a dedicated `issues` bookmark in\n   the underlying jj repo.\" — wrong since v3.\n2. \"**Bookmarks are the unit of sync.** Push/pull a bookmark and\n   you've round-tripped a whole issue tracker.\" — A user\n   following this would `jj git push` the bookmark (no-op, since\n   there is none) and not round-trip issues. The real refspec is\n   `+refs/jjf/*:refs/remotes/<remote>/jjf/*` per quickstart and\n   per `Storage::push_v3` at\n   `crates/jjf-storage/src/sync_v3.rs:179` and the `jjf push`/`jjf\n   pull` CLI verbs.\n3. Architecture / \"Why jj-native\" sections lean on the bookmark\n   model and need re-anchoring on the ref-namespace model.\n\n# Fix shape\n\n- Edit `README.md` so the storage paragraphs match the v3 model:\n  per-issue refs under `refs/jjf/issues/<id>`, per-memory refs\n  under `refs/jjf/memories/<key>`, the format-version sentinel\n  under `refs/jjf/meta/`.\n- Replace the \"bookmarks are the unit of sync\" claim with the\n  actual mechanism: `jjf push <remote>` / `jjf pull <remote>`\n  round-trip the whole `refs/jjf/*` namespace via standard git\n  transport.\n- A one-line footnote about the v3 cutover is fine (the README is\n  a public-facing pitch, not a changelog).\n- Keep the README's tone — the goal is correctness, not a rewrite.\n\n# Acceptance\n\n- [ ] README.md no longer claims an `issues` bookmark exists.\n- [ ] README.md's sync section matches the `refs/jjf/*` ref-\n      namespace model and points at `jjf push` / `jjf pull` as\n      the operator surface.\n- [ ] README matches `docs/quickstart.md` on the storage model.\n\n# Cross-refs\n\n- Source: github.com/myers/jjforge issue #1.\n- `docs/quickstart.md` is the source of truth.\n- v3 storage epic `bd98097 storage-v3-out-of-tree` (closed\n  2026-06-24).\n- v3 push impl: `crates/jjf-storage/src/sync_v3.rs:179`.\n",
+  "status": "open",
+  "block_reason": null,
+  "type": "bug",
+  "labels": [
+    "from:fj-issue",
+    "reported-by:user-beta"
+  ],
+  "dependencies": [],
+  "assignee": null,
+  "created_at": "2026-06-27T13:58:45Z",
+  "updated_at": "2026-06-27T13:58:45Z"
+}
