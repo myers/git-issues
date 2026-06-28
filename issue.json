@@ -9,8 +9,7 @@
   "type": "bug",
   "priority": null,
   "labels": [
-    "bug",
-    "epic:storage-v3-out-of-tree"
+    "bug"
   ],
   "dependencies": [
     {
