@@ -8,9 +8,7 @@
   "block_reason": null,
   "type": "unspecified",
   "priority": null,
-  "labels": [
-    "epic:mvp-cli"
-  ],
+  "labels": [],
   "dependencies": [
     {
       "target": "a5f8122",
