@@ -8,11 +8,9 @@
   "block_reason": null,
   "type": "epic",
   "priority": null,
-  "labels": [
-    "epic"
-  ],
+  "labels": [],
   "dependencies": [],
   "assignee": null,
   "created_at": "2026-06-23T13:43:53Z",
-  "updated_at": "2026-06-28T18:40:54Z"
+  "updated_at": "2026-06-28T18:41:26Z"
 }
