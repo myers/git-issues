@@ -7,6 +7,7 @@
   "status": "closed",
   "block_reason": null,
   "type": "feature",
+  "priority": null,
   "labels": [
     "epic:mvp-storage",
     "epic:storage-v3-out-of-tree"
@@ -15,9 +16,13 @@
     {
       "target": "53f9728",
       "kind": "blocks"
+    },
+    {
+      "target": "f21b950",
+      "kind": "parent-child"
     }
   ],
   "assignee": null,
   "created_at": "2026-06-23T23:39:23Z",
-  "updated_at": "2026-06-24T15:04:13Z"
+  "updated_at": "2026-06-28T18:39:25Z"
 }
