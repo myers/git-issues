@@ -7,12 +7,18 @@
   "status": "closed",
   "block_reason": null,
   "type": "research",
+  "priority": null,
   "labels": [
     "epic:host-asterinas",
     "epic:mvp-storage"
   ],
-  "dependencies": [],
+  "dependencies": [
+    {
+      "target": "ec5a0a8",
+      "kind": "parent-child"
+    }
+  ],
   "assignee": null,
   "created_at": "2026-06-23T17:53:47Z",
-  "updated_at": "2026-06-23T19:23:19Z"
+  "updated_at": "2026-06-28T18:40:50Z"
 }
