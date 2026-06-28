@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "id": "2542fdf",
+  "title": "migrator: split oversized bodies into dated session comments",
+  "slug": "migrator-body-comment-split",
+  "body": "# Goal\n\nWhen the migrator hits a source `.md` whose body would exceed the\n64KB `body_too_large` cap, split dated session blocks out of the\nbody and into chronological comments. Keeps `jjf show` rendering\nthe whole narrative; preserves the dated-session log shape the\nasterinas tree already uses.\n\n# Policy (decided 2026-06-28)\n\n**When to split:** only when the body would exceed the 64KB cap.\nFiles under the cap stay whole — no churn.\n\n**What to peel into comments:** dated session blocks, in\nchronological order (source order, which is already chronological\nin the asterinas tree).\n\n**Detection patterns (try both):**\n\n1. **H2 starting with a date.** Example: `## 2026-05-07 — investigation`.\n   Regex: `^## \\d{4}-\\d{2}-\\d{2}\\b`. Matches the majority shape.\n2. **`**Session:** YYYY-MM-DD` lines.** Some files use a bold-Session\n   prefix instead of H2. Regex: `^\\*\\*Session:\\*\\* \\d{4}-\\d{2}-\\d{2}`.\n\nIf neither pattern matches and the body is still over cap, fall\nback to the trial-run recipe: split at the last header break before\nthe cap and dump the tail into one comment with a \"continuation\"\nmarker. Surface in the slice report so the operator can hand-fix.\n\n# Why now\n\nSurfaced 2026-06-28 trial migration of `epic-01-host-net`. One\nfile (`host-net-04a-sshd-scp-channel-hang.md`, 81,931 bytes) hit\nthe cap. Agent peeled the 2026-05-05 session block into a single\ncomment as a one-off — worked, but is a recipe gap not a one-off.\n\nThe asterinas tree has at least a handful more candidates (any\nfile with a long debug saga across multiple sessions). Phase 5\nwifi is the likely concentration. The full bulk migration needs\nthis rule before it can run end-to-end without operator\nintervention.\n\n# Source\n\nTrial migration of `epic-01-host-net` flagged this as Issue #1\nin the spot-check review. Audit at\n`docs/host-asterinas-audit.md` doesn't cover oversized bodies —\nthe audit predates 968-issue scale testing.\n\n# Acceptance\n\n- [ ] Migrator detects body-would-exceed-64KB before submission.\n- [ ] Migrator extracts dated session blocks (H2-date AND\n      Session: patterns) into chronological comments.\n- [ ] Body retains the pre-saga header/goal/active-plan section.\n- [ ] `jjf show <id>` renders the full narrative across body +\n      comments in chronological order.\n- [ ] If no detected pattern matches, fall back to a\n      \"continuation\" tail-comment AND surface in the slice\n      report for operator review.\n- [ ] Slice report logs each split: file, body size after\n      split, comment count, detected pattern (H2-date /\n      Session: / fallback).\n\n# Out of scope\n\n- Raising the 64KB cap. The cap is intentional (snapshot cache\n  perf at 968-issue scale). The split recipe is the right fix.\n- Active-vs-closed split policy (option C from the design Q&A).\n  We picked A (only-when-forced), which obsoletes the\n  status-conditional logic.\n- Migration of non-asterinas trees. The H2-date and Session:\n  patterns are asterinas conventions; other sources need their\n  own detection.\n",
+  "status": "open",
+  "block_reason": null,
+  "type": "feature",
+  "priority": null,
+  "labels": [],
+  "dependencies": [
+    {
+      "target": "cc2fa96",
+      "kind": "parent-child"
+    }
+  ],
+  "assignee": null,
+  "created_at": "2026-06-28T20:56:42Z",
+  "updated_at": "2026-06-28T20:56:42Z"
+}
