@@ -7,12 +7,12 @@
   "status": "open",
   "block_reason": null,
   "type": "epic",
+  "priority": null,
   "labels": [
-    "epic",
-    "epic:mvp-storage"
+    "epic"
   ],
   "dependencies": [],
   "assignee": null,
   "created_at": "2026-06-22T14:47:41Z",
-  "updated_at": "2026-06-23T19:24:50Z"
+  "updated_at": "2026-06-28T18:41:21Z"
 }
