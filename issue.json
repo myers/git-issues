@@ -8,9 +8,7 @@
   "block_reason": null,
   "type": "feature",
   "priority": null,
-  "labels": [
-    "epic:agent-ergonomics"
-  ],
+  "labels": [],
   "dependencies": [
     {
       "target": "5a755ec",
@@ -19,5 +17,5 @@
   ],
   "assignee": null,
   "created_at": "2026-06-23T02:05:46Z",
-  "updated_at": "2026-06-28T18:41:03Z"
+  "updated_at": "2026-06-28T18:41:04Z"
 }
