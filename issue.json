@@ -7,13 +7,19 @@
   "status": "closed",
   "block_reason": null,
   "type": "bug",
+  "priority": null,
   "labels": [
     "bug",
     "epic:mvp-storage",
     "epic:storage-v3-out-of-tree"
   ],
-  "dependencies": [],
+  "dependencies": [
+    {
+      "target": "f21b950",
+      "kind": "parent-child"
+    }
+  ],
   "assignee": null,
   "created_at": "2026-06-24T04:21:09Z",
-  "updated_at": "2026-06-24T11:05:51Z"
+  "updated_at": "2026-06-28T18:39:21Z"
 }
