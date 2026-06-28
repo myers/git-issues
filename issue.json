@@ -9,7 +9,6 @@
   "type": "research",
   "priority": null,
   "labels": [
-    "epic:host-asterinas",
     "epic:mvp-storage"
   ],
   "dependencies": [
