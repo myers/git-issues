@@ -8,9 +8,7 @@
   "block_reason": null,
   "type": "epic",
   "priority": null,
-  "labels": [
-    "epic"
-  ],
+  "labels": [],
   "dependencies": [
     {
       "target": "487536a",
@@ -23,5 +21,5 @@
   ],
   "assignee": null,
   "created_at": "2026-06-23T19:19:43Z",
-  "updated_at": "2026-06-28T18:40:48Z"
+  "updated_at": "2026-06-28T18:41:25Z"
 }
