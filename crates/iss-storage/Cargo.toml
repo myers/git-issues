@@ -1,0 +1,18 @@
+[package]
+name = "iss-storage"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Storage library for git-issues — git-plumbing-backed v3 issue records on refs/jjf/*."
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+# Property-based tests for the storage mutate/read surface.
+# Test-only — see `tests/proptest_harness.rs` for the harness.
+# Issue `df74809` (qa-proptest-harness).
+proptest = "1.11"

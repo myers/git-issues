@@ -1,0 +1,17 @@
+[package]
+name = "iss"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "The git-issues CLI binary — clap-derive subcommand harness over `iss-storage`."
+
+[[bin]]
+name = "iss"
+path = "src/main.rs"
+
+[dependencies]
+iss-storage = { path = "../iss-storage" }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+clap = { version = "4", features = ["derive"] }
