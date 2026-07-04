@@ -300,10 +300,11 @@ enum Commands {
     /// List issues from the `issues` bookmark, with optional filters.
     /// Default: every open issue. Plain-text output is one row per
     /// issue, tab-separated columns
-    /// (`<id-7>\t<status>\t<labels>L\t<title>`), no header, sorted
-    /// newest-first by `created_at`. `--json` emits a JSON array of
-    /// `Issue` records (the same shape `show --json` emits per
-    /// element). Empty result is exit 0 with no output.
+    /// (`<id-7>\t<status>\t<priority>\t<type>\t<title>`), no header,
+    /// sorted newest-first by `created_at`. `<priority>` is `-` when
+    /// unset. `--json` emits a JSON array of `Issue` records (the
+    /// same shape `show --json` emits per element). Empty result is
+    /// exit 0 with no output.
     Ls {
         /// Filter by status. `open` is the default (the "lists are
         /// about what's actionable" convention). `all` shows every
@@ -362,8 +363,8 @@ enum Commands {
     /// sorting.
     ///
     /// Plain-text output is the same tab-separated row shape as
-    /// `ls` (`<id>\t<status>\t<labelN>L\t<title>`); `--json` emits
-    /// an array of `Issue` records.
+    /// `ls` (`<id>\t<status>\t<priority>\t<type>\t<title>`); `--json`
+    /// emits an array of `Issue` records.
     ///
     /// The headline agent-ergonomics primitive: `iss ready --limit 1
     /// --json` returns one unblocked issue to feed into the next
