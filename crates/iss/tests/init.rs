@@ -217,7 +217,7 @@ fn verb_on_uninitialized_repo_rejects_without_jj() {
     // Plain git repo — NO `jj git init`, NO `iss init`, no
     // refs/jjf/meta/format-version sentinel. After J3 the preflight
     // detects the missing sentinel purely via git-plumbing and refuses
-    // with MissingIssuesBookmark WITHOUT spawning jj at all. Using a
+    // with NotInitialized WITHOUT spawning jj at all. Using a
     // plain git repo (not jj-colocated) ensures this test could NOT
     // have passed before J3 via the old `jj bookmark list` fallback
     // (jj would have refused the non-jj dir), so it actually gates the

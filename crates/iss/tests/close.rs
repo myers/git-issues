@@ -342,7 +342,7 @@ fn close_in_jj_repo_without_bugs_bookmark_exits_two_with_init_hint() {
     );
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
-        stderr.contains("`issues` bookmark") && stderr.contains("iss init"),
+        stderr.contains("not initialized") && stderr.contains("iss init"),
         "stderr should tell the user to run `iss init` first, got: {stderr}"
     );
 }
@@ -358,7 +358,7 @@ fn open_in_jj_repo_without_bugs_bookmark_exits_two_with_init_hint() {
     assert_eq!(out.status.code(), Some(2));
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
-        stderr.contains("`issues` bookmark") && stderr.contains("iss init"),
+        stderr.contains("not initialized") && stderr.contains("iss init"),
         "stderr should tell the user to run `iss init` first, got: {stderr}"
     );
 }

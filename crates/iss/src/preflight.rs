@@ -1,17 +1,18 @@
 //! Pre-storage probes the binary runs before handing off to
-//! `jjf-storage`. Today there's exactly one — [`issues_bookmark`] —
-//! but it lives in its own module so every read/write verb calls the
-//! same implementation rather than each open-coding the same probes.
+//! `jjf-storage`. Today there's exactly one — [`require_initialized`]
+//! — but it lives in its own module so every read/write verb calls
+//! the same implementation rather than each open-coding the same
+//! probes.
 //!
 //! # Why this is in the binary, not the storage crate
 //!
-//! `jjf-storage` deliberately does NOT check for the `issues`
-//! bookmark in `Storage::open` — the storage layer treats
-//! "bookmark exists" as a precondition the caller is responsible for.
-//! The CLI wants a distinct, typed "run `iss init` first" signal
+//! `jjf-storage` deliberately does NOT check that git-issues is
+//! initialized in `Storage::open` — the storage layer treats
+//! "already initialized" as a precondition the caller is responsible
+//! for. The CLI wants a distinct, typed "run `iss init` first" signal
 //! (exit 2, message pointing at the fix) rather than the raw
-//! jj-stderr that would bubble up from a first storage write against
-//! an empty `bookmarks(issues)` revset, so it runs the probe itself.
+//! git-stderr that would bubble up from a first storage write against
+//! a repo that was never seeded, so it runs the probe itself.
 //!
 //! If a future ticket lifts this check into `Storage::open_strict`
 //! (or extends the `StorageError` enum), this module can shrink to
@@ -29,11 +30,11 @@ use crate::CliError;
 /// --git-dir` and translates a non-zero exit into `NotAGitRepo`;
 /// everything else becomes a generic `Probe` failure.
 ///
-/// Callers that ALSO need the `issues` bookmark (every read/write
-/// verb that touches an existing issue) should use
-/// [`issues_bookmark`] instead — it composes this probe with the
-/// bookmark check. Callers that meaningfully run before `iss init`
-/// (today: `iss remote add|ls|rm`) call this one directly.
+/// Callers that ALSO need git-issues to be initialized (every
+/// read/write verb that touches an existing issue) should use
+/// [`require_initialized`] instead — it composes this probe with the
+/// initialization check. Callers that meaningfully run before `iss
+/// init` (today: `iss remote add|ls|rm`) call this one directly.
 pub(crate) fn git_repo(cwd: &Path) -> Result<(), CliError> {
     let out = Command::new("git")
         .arg("-C")
@@ -60,7 +61,7 @@ pub(crate) fn git_repo(cwd: &Path) -> Result<(), CliError> {
 /// Most read/write verbs (`iss new`, `iss show`, `iss ls`, etc.) call
 /// this. The `iss remote *` verbs use the simpler [`git_repo`] probe
 /// because remote setup is meaningful before `iss init`.
-pub(crate) fn issues_bookmark(cwd: &Path) -> Result<(), CliError> {
+pub(crate) fn require_initialized(cwd: &Path) -> Result<(), CliError> {
     // Check 1: is this a git repo at all?
     git_repo(cwd)?;
 
@@ -69,11 +70,11 @@ pub(crate) fn issues_bookmark(cwd: &Path) -> Result<(), CliError> {
     if git_ref_exists(cwd, "refs/jjf/meta/format-version")? {
         return Ok(());
     }
-    Err(CliError::MissingIssuesBookmark(cwd.to_owned()))
+    Err(CliError::NotInitialized(cwd.to_owned()))
 }
 
 /// Cheap check: does a git ref resolve in `cwd`? Used by
-/// [`issues_bookmark`] to detect v3-shape repos via the sentinel ref.
+/// [`require_initialized`] to detect v3-shape repos via the sentinel ref.
 fn git_ref_exists(cwd: &Path, ref_name: &str) -> Result<bool, CliError> {
     let out = Command::new("git")
         .arg("-C")

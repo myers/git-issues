@@ -660,7 +660,7 @@ enum Commands {
     ///
     /// `iss assign <id> <name>` sets the assignee; an empty `name`
     /// (e.g. `iss assign <id> ""`) clears it. Same preflight
-    /// (issues_bookmark probe, handle resolution) and the same
+    /// (require_initialized probe, handle resolution) and the same
     /// typed errors as `update --assignee`: `issue_not_found` /
     /// `slug_not_found` on unknown handles, `invalid_input` from
     /// storage when the name contains a newline.
@@ -841,7 +841,7 @@ enum Commands {
     /// Push the `refs/jjf/*` issue refs to a git remote via plain git
     /// transport (v3 refspec: `refs/jjf/*:refs/jjf/*`).
     ///
-    /// Preflight: full `issues_bookmark` probe (the sentinel ref must
+    /// Preflight: full `require_initialized` probe (the sentinel ref must
     /// exist locally — there's nothing to push otherwise). Unknown
     /// remote surfaces as `remote_not_found` (exit 2); network /
     /// auth / non-fast-forward failures are runtime (exit 1) under
@@ -1227,18 +1227,19 @@ enum CliError {
     #[error("invalid issue id {value:?}: {error}")]
     BadIssueId { value: String, error: IdError },
 
-    /// We're inside a git repo, but the `issues` bookmark doesn't
-    /// exist yet. Surfaced as a preflight (exit 2) so the user gets
-    /// a typed signal that they need to run `iss init` rather than
-    /// the raw git-stderr we'd get from trying to write against a
-    /// ref namespace that was never seeded.
-    #[error("the `issues` bookmark does not exist in {0}; run `iss init` first")]
-    MissingIssuesBookmark(PathBuf),
+    /// We're inside a git repo, but git-issues hasn't been
+    /// initialized yet. Surfaced as a preflight (exit 2) so the user
+    /// gets a typed signal that they need to run `iss init` rather
+    /// than the raw git-stderr we'd get from trying to write against
+    /// a ref namespace that was never seeded.
+    #[error("git-issues is not initialized in {0}; run `iss init` first")]
+    NotInitialized(PathBuf),
 
-    /// Probing for the `issues` bookmark (or for git-repo-presence)
-    /// failed for a reason other than absence — e.g. the `git`
-    /// binary isn't on PATH, or returned an unexpected error. This
-    /// is a runtime failure, not a preflight one.
+    /// Probing for git-issues initialization (or for
+    /// git-repo-presence) failed for a reason other than absence —
+    /// e.g. the `git` binary isn't on PATH, or returned an
+    /// unexpected error. This is a runtime failure, not a preflight
+    /// one.
     #[error("could not probe git state: {0}")]
     Probe(std::io::Error),
 
@@ -1622,7 +1623,7 @@ impl CliError {
             CliError::BadDepId { .. } => 2,
             CliError::BadDepKind { .. } => 2,
             CliError::BadIssueId { .. } => 2,
-            CliError::MissingIssuesBookmark(_) => 2,
+            CliError::NotInitialized(_) => 2,
             CliError::EmptyCommentBody => 2,
             CliError::EmptyLabel => 2,
             CliError::EmptyMetadataKey => 2,
@@ -1715,7 +1716,7 @@ impl CliError {
             CliError::BadDepId { .. } => "bad_id",
             CliError::BadDepKind { .. } => "bad_dep_kind",
             CliError::BadIssueId { .. } => "bad_id",
-            CliError::MissingIssuesBookmark(_) => "missing_issues_bookmark",
+            CliError::NotInitialized(_) => "not_initialized",
             CliError::EmptyCommentBody => "empty_body",
             CliError::EmptyLabel => "empty_label",
             CliError::EmptyMetadataKey => "empty_metadata_key",
@@ -1774,7 +1775,7 @@ impl CliError {
                 "field": "dep",
             }),
             CliError::BadIssueId { value, .. } => json!({ "value": value, "field": "id" }),
-            CliError::MissingIssuesBookmark(path) => {
+            CliError::NotInitialized(path) => {
                 json!({ "path": path.display().to_string() })
             }
             CliError::RemoteAlreadyExists(name) => json!({ "name": name }),
@@ -2300,7 +2301,7 @@ fn run_new(
     // doing the probe here keeps the user-facing error precise without
     // expanding the storage API. Implementation lives in `preflight`
     // so the read verbs share the same code.
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     // 5. Open storage. We need it before resolving `--parent` handles
     // so slugs work (b417864), and obviously before the write itself.
@@ -2420,7 +2421,7 @@ fn run_show(json: bool, id: String, include_memories: bool) -> Result<(), CliErr
     // 2. Preflight the same checks the write path runs. `run iss
     // init first` is the right error when the bookmark is missing,
     // not a raw git-stderr.
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     // 3. Open storage and resolve the handle (`id`-or-`slug`).
     let storage = Storage::open(&cwd)?;
@@ -2522,7 +2523,7 @@ fn run_remember(
     // 3. Preflight cwd + bookmark.
     let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     // 4. Hand off to storage.
     let storage = Storage::open(&cwd)?;
@@ -2561,7 +2562,7 @@ fn run_remember(
 fn run_memories(json: bool, search: Option<String>) -> Result<(), CliError> {
     let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
     let storage = Storage::open(&cwd)?;
     let mut memories = storage.list_memories()?;
     if let Some(s) = &search {
@@ -2602,7 +2603,7 @@ fn run_memories(json: bool, search: Option<String>) -> Result<(), CliError> {
 fn run_recall(json: bool, key: String) -> Result<(), CliError> {
     let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
     let storage = Storage::open(&cwd)?;
     let mem = storage.read_memory(&key)?;
     match mem {
@@ -2632,7 +2633,7 @@ fn run_recall(json: bool, key: String) -> Result<(), CliError> {
 fn run_forget(json: bool, key: String) -> Result<(), CliError> {
     let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
     let storage = Storage::open(&cwd)?;
     // Probe up-front so we can surface `MemoryNotFound` rather than
     // storage's generic `Invalid` message.
@@ -2799,7 +2800,7 @@ fn run_set_status(json: bool, id: String, status: Status) -> Result<(), CliError
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
 
     // 2. Preflight: git repo + `issues` bookmark present.
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     // 3. Open storage, resolve the handle (`id`-or-`slug`), then
     // hand off the mutation.
@@ -2845,14 +2846,14 @@ fn run_set_status(json: bool, id: String, status: Status) -> Result<(), CliError
 /// commit via [`Storage::block`]. v2.5 (`agent-await-gates-impl`).
 ///
 /// Preflight order mirrors `run_set_status`: refuse-self-host, then
-/// `issues_bookmark`, then resolve the handle, then hand off to
+/// `require_initialized`, then resolve the handle, then hand off to
 /// storage. Single-line reason validation is the storage layer's
 /// responsibility — newlines in `--reason` come back as a typed
 /// `invalid_input` error from storage.
 fn run_block(json: bool, id: String, reason: Option<String>) -> Result<(), CliError> {
     let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     let storage = Storage::open(&cwd)?;
     let issue_id = resolve_handle(&storage, &id)?;
@@ -2900,7 +2901,7 @@ fn run_block(json: bool, id: String, reason: Option<String>) -> Result<(), CliEr
 fn run_unblock(json: bool, id: String) -> Result<(), CliError> {
     let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     let storage = Storage::open(&cwd)?;
     let issue_id = resolve_handle(&storage, &id)?;
@@ -2931,13 +2932,13 @@ fn run_unblock(json: bool, id: String) -> Result<(), CliError> {
 /// blank-but-non-null assignee.
 ///
 /// Preflight order mirrors `run_set_status`: canonicalize cwd,
-/// `issues_bookmark` probe, resolve the handle, hand off to
+/// `require_initialized` probe, resolve the handle, hand off to
 /// storage. Newlines in `name` come back from the storage layer
 /// as a typed `invalid_input` error (exit 1).
 fn run_assign(json: bool, id: String, name: String) -> Result<(), CliError> {
     let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     let storage = Storage::open(&cwd)?;
     let issue_id = resolve_handle(&storage, &id)?;
@@ -2999,7 +3000,7 @@ fn run_label(json: bool, id: String, label: String, op: LabelOp) -> Result<(), C
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
 
     // 3. Preflight: git repo + `issues` bookmark present.
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     // 4. Open storage, resolve handle (`id`-or-`slug`), then hand off.
     let storage = Storage::open(&cwd)?;
@@ -3057,7 +3058,7 @@ fn run_metadata(
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
 
     // 3. Preflight: git repo + `issues` bookmark present.
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     // 4. Open storage, resolve handle (`id`-or-`slug`), then hand off.
     let storage = Storage::open(&cwd)?;
@@ -3111,7 +3112,7 @@ fn run_dep(
 ) -> Result<(), CliError> {
     let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     let storage = Storage::open(&cwd)?;
     let child_id = resolve_handle(&storage, &child)?;
@@ -3151,7 +3152,7 @@ fn run_dep(
 fn run_dep_tree(json: bool, id: String) -> Result<(), CliError> {
     let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     let storage = Storage::open(&cwd)?;
     let root_id = resolve_handle(&storage, &id)?;
@@ -3567,7 +3568,7 @@ fn run_update(
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
 
     // 4. Preflight: git repo + `issues` bookmark present.
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     // 5. Open storage, resolve handle.
     let storage = Storage::open(&cwd)?;
@@ -3709,7 +3710,7 @@ fn run_comment(
     // "not a git repo" error rather than the (correct but less useful)
     // "no comment author available" — the user almost always wants to
     // hear about the repo problem first.
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     // 5. Resolve the author. CLI override wins; otherwise we synthesize
     // `Name <email>` from git's user config. If neither path yields a
@@ -3957,7 +3958,7 @@ fn run_ls(
     // than raw git stderr if the bookmark is missing.
     let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     let storage = Storage::open(&cwd)?;
     let ids = storage.list_ids()?;
@@ -4096,7 +4097,7 @@ fn run_ready(
     // Preflight: cwd is a git repo AND `issues` bookmark exists.
     let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     let storage = Storage::open(&cwd)?;
 
@@ -4265,7 +4266,7 @@ fn run_search(
     // Preflight: cwd is a git repo AND `issues` bookmark exists.
     let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     let storage = Storage::open(&cwd)?;
     let wanted_types: Vec<IssueType> =
@@ -4385,7 +4386,7 @@ fn run_stale(
     // order as `run_ls` / `run_search`.
     let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
 
     let storage = Storage::open(&cwd)?;
     let wanted_types: Vec<IssueType> =
@@ -4609,12 +4610,12 @@ fn slug_matches(issue: &Issue, pattern: Option<&str>) -> bool {
 /// match libgit2's stable phrases so a stderr-format tweak on either
 /// side stays detectable.
 ///
-/// Preflight: full `issues_bookmark` probe — the v3 sentinel ref must
+/// Preflight: full `require_initialized` probe — the v3 sentinel ref must
 /// exist locally for there to be anything to push.
 fn run_push(json: bool, remote: String) -> Result<(), CliError> {
     let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
     let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
-    preflight::issues_bookmark(&cwd)?;
+    preflight::require_initialized(&cwd)?;
     let storage = Storage::open(&cwd).map_err(CliError::Storage)?;
     run_push_v3(json, &remote, &storage)
 }

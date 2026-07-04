@@ -88,7 +88,7 @@ fn new_json_emits_expected_object_and_id_parses() {
 #[test]
 fn new_json_error_envelope_on_missing_bookmark() {
     // Fresh jj repo, no `iss init` yet. With `--json` we expect the
-    // documented `missing_issues_bookmark` envelope on stderr — the same
+    // documented `not_initialized` envelope on stderr — the same
     // contract a script wrapping `iss new` to file bugs would parse.
     let repo = make_git_repo("new_json_err_no_bookmark");
 
@@ -110,7 +110,7 @@ fn new_json_error_envelope_on_missing_bookmark() {
     assert_eq!(v["ok"], serde_json::Value::Bool(false));
     assert_eq!(
         v["error"]["kind"].as_str(),
-        Some("missing_issues_bookmark"),
+        Some("not_initialized"),
         "kind wrong: {stderr}"
     );
     // details.path should echo the repo dir so a caller can confirm
@@ -144,7 +144,7 @@ fn new_without_iss_init_first_exits_two_with_run_iss_init_first_message() {
     );
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
-        stderr.contains("`issues` bookmark") && stderr.contains("iss init"),
+        stderr.contains("not initialized") && stderr.contains("iss init"),
         "stderr should tell the user to run `iss init` first, got: {stderr}"
     );
 }

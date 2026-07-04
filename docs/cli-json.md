@@ -182,7 +182,7 @@ from plain-text mode (see the top comment in `main.rs`: `0` success,
 |------------------------------|------|-------------------------------|--------------------------|
 | `not_a_git_repo`             | 2    | `Storage::NotAGitRepo`        | `path`                   |
 | `corrupt_sentinel`           | 1    | `Storage::CorruptSentinel`    | `oid`, `object_type`     |
-| `missing_issues_bookmark`    | 2    | `MissingIssuesBookmark`       | `path`                   |
+| `not_initialized`            | 2    | `NotInitialized`              | `path`                   |
 | `issue_not_found`            | 1    | `Storage::IssueNotFound`      | `id`                     |
 | `bad_id`                     | 2    | `BadIssueId` / `BadDepId`     | `value`, `field`         |
 | `bad_dep_kind`               | 2    | `BadDepKind`                  | `value`, `kind`, `field` |
@@ -536,11 +536,11 @@ $ iss new --json -t $'foo\nbar'
 {"ok":false,"error":{"kind":"invalid_title","message":"...","details":{"title":"foo\nbar","reason":"newline"}}}
 ```
 
-Error path — `issues` bookmark missing (didn't run `iss init` first):
+Error path — git-issues not initialized (didn't run `iss init` first):
 
 ```sh
 $ echo body | iss new --json -t x -F -
-{"ok":false,"error":{"kind":"missing_issues_bookmark","message":"the `issues` bookmark does not exist in /repo; run `iss init` first","details":{"path":"/repo"}}}
+{"ok":false,"error":{"kind":"not_initialized","message":"git-issues is not initialized in /repo; run `iss init` first","details":{"path":"/repo"}}}
 ```
 
 ### `show`
@@ -1121,7 +1121,7 @@ Mutating verb — `{"ok": true, ...}` envelope. Wraps
 common failure modes (network, auth, non-fast-forward rejection,
 unknown remote) into typed kinds so scripts can branch.
 
-Preflight is the full `issues_bookmark` probe — there's nothing to
+Preflight is the full `require_initialized` probe — there's nothing to
 push if the local bookmark doesn't exist. Unknown remote is exit 2
 (preflight); network/auth/reject are exit 1 (runtime — the command
 was well-formed, the remote just said no).
@@ -1170,7 +1170,7 @@ which driver ran. The field exists for forward-compat — a future
 `iss` may grow alternate strategies (e.g. a `file_bytes` escape
 hatch, see `bfc732b`); today the only value is `op_space`.
 
-Preflight is jj-repo-only (not the full `issues_bookmark` probe) —
+Preflight is jj-repo-only (not the full `require_initialized` probe) —
 a fresh clone has `issues@<remote>` but no local `issues` yet, and
 `pull` is what materializes the local bookmark via the
 `jj bookmark track` step.

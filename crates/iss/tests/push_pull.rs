@@ -419,7 +419,7 @@ fn push_without_init_exits_two_missing_marker() {
     let stderr = String::from_utf8_lossy(&out.stderr);
     let v: serde_json::Value =
         serde_json::from_str(stderr.trim()).expect("stderr must be JSON envelope");
-    assert_eq!(v["error"]["kind"].as_str(), Some("missing_issues_bookmark"));
+    assert_eq!(v["error"]["kind"].as_str(), Some("not_initialized"));
 }
 
 #[test]
