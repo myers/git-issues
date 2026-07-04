@@ -5,10 +5,9 @@ description: Use when working in a project that uses git-issues (the `iss` CLI) 
 
 # Using git-issues
 
-git-issues is a jj-native, agent-first issue tracker. The CLI is `iss`.
-Every verb takes `--json` for scripting. There are no interactive
-prompts and no editor launches — bodies come from `-F <path>` or
-`-F -` (stdin).
+git-issues is a git-native, agent-first issue tracker. CLI: `iss`.
+Every verb takes `--json`. No interactive prompts, no editor
+launches — bodies come from `-F <path>` or `-F -` (stdin).
 
 ## Entry point
 
@@ -86,6 +85,8 @@ iss block <handle> --reason "<why>"      # park; excluded from ready
 iss unblock <handle>                     # unpark
 iss label add <handle> <label>           # add a label
 iss label rm  <handle> <label>           # remove
+iss metadata set <handle> <key> <value>  # per-issue string metadata
+iss abandon <handle>                     # soft-delete
 cat body.md | iss comment <handle> -F -  # append a comment
 ```
 

@@ -118,4 +118,3 @@ left open and why), and any follow-ups you filed.
 | Confidence implied by tone but not stated | Add the `## Confidence` line with one of `low`/`medium`/`high` |
 | Did the work, wrote a great writeup, never posted it | The comment IS the artifact; nothing else counts |
 | Orchestrator set `ISS_ACTOR` but the comment landed under the shared `git config user.name` | The env var was in your shell, not in `iss`'s — check `iss show <id>` after; if the actor is wrong, pass `--actor <name>` explicitly on a corrective comment |
-| Pre-cutover muscle memory typed `git-bug bug X` | git-issues replaced git-bug on 2026-06-22. Use `iss X`. Pre-cutover history lives in `refs/bugs/*` and is read via `git-bug bug show <id>` — but you write via `iss`. |
