@@ -737,6 +737,102 @@ fn compute_blocked_set(all: &[Issue]) -> std::collections::HashSet<IssueId> {
     blocked
 }
 
+/// Compute the leaf-only completion summary for the `parent-child`
+/// tree rooted at `root_id`, given every issue in the snapshot. See
+/// [`EpicProgress`] for the counting rules. The ROOT itself is never
+/// counted as a leaf — only issues reachable via at least one
+/// parent-child edge FROM this function's perspective (i.e. `root`'s
+/// descendants) are eligible; if `root` has zero parent-child
+/// children, the result is `0/0` (an epic with no children yet has
+/// no scoped work, not one unit of "root as its own leaf").
+fn epic_progress_from_issues(root_id: &IssueId, all: &[Issue]) -> EpicProgress {
+    let mut children_of: std::collections::BTreeMap<IssueId, Vec<IssueId>> =
+        std::collections::BTreeMap::new();
+    for issue in all {
+        for edge in &issue.dependencies {
+            if edge.kind == DepKind::ParentChild {
+                children_of
+                    .entry(edge.target.clone())
+                    .or_default()
+                    .push(issue.id.clone());
+            }
+        }
+    }
+
+    let issue_by_id: std::collections::HashMap<IssueId, &Issue> =
+        all.iter().map(|i| (i.id.clone(), i)).collect();
+
+    let mut progress = EpicProgress {
+        done: 0,
+        total: 0,
+        in_progress: 0,
+        optional_total: 0,
+        optional_done: 0,
+    };
+
+    fn count_leaf(issue: &Issue, progress: &mut EpicProgress) {
+        let is_optional = issue.labels.iter().any(|l| l == "optional");
+        let is_done = issue.status == Status::Closed;
+        let is_in_progress = issue.status == Status::InProgress;
+        if is_optional {
+            progress.optional_total += 1;
+            if is_done {
+                progress.optional_done += 1;
+            }
+        } else {
+            progress.total += 1;
+            if is_done {
+                progress.done += 1;
+            }
+            if is_in_progress {
+                progress.in_progress += 1;
+            }
+        }
+    }
+
+    fn walk(
+        node: &IssueId,
+        issue_by_id: &std::collections::HashMap<IssueId, &Issue>,
+        children_of: &std::collections::BTreeMap<IssueId, Vec<IssueId>>,
+        visited: &mut std::collections::HashSet<IssueId>,
+        progress: &mut EpicProgress,
+    ) {
+        if !visited.insert(node.clone()) {
+            return; // Cycle — already counted (or being counted) upstream.
+        }
+        match children_of.get(node) {
+            Some(child_ids) if !child_ids.is_empty() => {
+                for cid in child_ids {
+                    walk(cid, issue_by_id, children_of, visited, progress);
+                }
+            }
+            _ => {
+                if let Some(issue) = issue_by_id.get(node) {
+                    count_leaf(issue, progress);
+                }
+                // Dangling id (no matching issue record) — silently
+                // skip rather than panic; shouldn't happen in
+                // practice since `children_of` is built from real
+                // issues' own dependency edges.
+            }
+        }
+    }
+
+    let mut visited = std::collections::HashSet::new();
+    // Seed `visited` with the root BEFORE walking its children, so
+    // the root itself is never counted as a leaf even if it has zero
+    // children (the zero-leaf case: children_of.get(root_id) is
+    // None/empty, but we must NOT fall into the `_ => count_leaf(...)`
+    // arm for the root — we only want to count DESCENDANTS).
+    visited.insert(root_id.clone());
+    if let Some(child_ids) = children_of.get(root_id) {
+        for cid in child_ids {
+            walk(cid, &issue_by_id, &children_of, &mut visited, &mut progress);
+        }
+    }
+    progress
+}
+
 /// Type union helper. Empty wanted = match every type.
 fn types_match_any(issue_type: IssueType, wanted: &[IssueType]) -> bool {
     wanted.is_empty() || wanted.iter().any(|t| *t == issue_type)
@@ -1392,6 +1488,23 @@ pub struct DepTreeNode {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct DepTree {
     pub root: DepTreeNode,
+}
+
+/// Completion summary for an epic's `parent-child` leaf descendants
+/// (spec: epic-progress design, 2026-07-04). Only LEAVES (nodes with
+/// no parent-child children of their own) count; an intermediate
+/// node contributes nothing directly — its own leaves do. A leaf
+/// carrying the label `optional` is excluded from `done`/`total` and
+/// tracked separately in `optional_total`/`optional_done`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub struct EpicProgress {
+    pub done: usize,
+    pub total: usize,
+    /// Leaves in `Status::InProgress` — a subset of "not yet done",
+    /// broken out so callers can render "N in-progress" separately.
+    pub in_progress: usize,
+    pub optional_total: usize,
+    pub optional_done: usize,
 }
 
 /// Verify the repo is in the v3 storage shape. Returns `Ok(())` iff
@@ -2871,6 +2984,16 @@ impl Storage {
         let mut visited = std::collections::HashSet::new();
         let root = walk(root_id, &issue_by_id, &children_of, &mut visited);
         Ok(DepTree { root })
+    }
+
+    /// Completion summary for the `parent-child` tree rooted at
+    /// `root_id`. See [`EpicProgress`] for the counting rules.
+    /// Delegates to [`epic_progress_from_issues`] after loading the
+    /// snapshot — same "one `snapshot()` call" shape as `dep_tree`.
+    pub fn epic_progress(&self, root_id: &IssueId) -> Result<EpicProgress> {
+        let snapshot = self.snapshot()?;
+        let all: Vec<Issue> = snapshot.issues.values().cloned().collect();
+        Ok(epic_progress_from_issues(root_id, &all))
     }
 
     /// Append a comment. Generates a fresh 7-hex comment id and updates
@@ -4832,6 +4955,111 @@ Jjf-Label: fixed
         )];
         let blocked = compute_blocked_set(&all);
         assert!(!blocked.contains(&b));
+    }
+
+    fn mk_labeled_issue(
+        id: &str,
+        status: Status,
+        deps: Vec<DepEdge>,
+        labels: Vec<&str>,
+    ) -> Issue {
+        let mut issue = mk_issue(id, status, deps);
+        issue.labels = labels.into_iter().map(String::from).collect();
+        issue
+    }
+
+    fn parent_child_edge(target: &str) -> DepEdge {
+        DepEdge {
+            kind: DepKind::ParentChild,
+            target: iid(target),
+        }
+    }
+
+    #[test]
+    fn epic_progress_counts_only_leaves() {
+        // epic -> mid -> leaf1, leaf2. epic and mid must NOT be
+        // counted themselves; only leaf1/leaf2 count.
+        let epic = mk_issue("0000001", Status::Open, vec![]);
+        let mid = mk_issue("0000002", Status::Open, vec![parent_child_edge("0000001")]);
+        let leaf1 = mk_issue("0000003", Status::Closed, vec![parent_child_edge("0000002")]);
+        let leaf2 = mk_issue("0000004", Status::Open, vec![parent_child_edge("0000002")]);
+        let all = vec![epic, mid, leaf1, leaf2];
+
+        let progress = epic_progress_from_issues(&iid("0000001"), &all);
+        assert_eq!(progress.total, 2, "only leaf1/leaf2 count, not mid or epic itself");
+        assert_eq!(progress.done, 1, "leaf1 is closed");
+    }
+
+    #[test]
+    fn epic_progress_excludes_optional_labeled_leaves() {
+        let epic = mk_issue("0000001", Status::Open, vec![]);
+        let required = mk_issue("0000002", Status::Closed, vec![parent_child_edge("0000001")]);
+        let optional = mk_labeled_issue(
+            "0000003",
+            Status::Open,
+            vec![parent_child_edge("0000001")],
+            vec!["optional"],
+        );
+        let all = vec![epic, required, optional];
+
+        let progress = epic_progress_from_issues(&iid("0000001"), &all);
+        assert_eq!(progress.total, 1, "optional leaf excluded from total");
+        assert_eq!(progress.done, 1);
+        assert_eq!(progress.optional_total, 1);
+        assert_eq!(progress.optional_done, 0, "optional leaf is Open, not done");
+    }
+
+    #[test]
+    fn epic_progress_counts_in_progress_leaves() {
+        let epic = mk_issue("0000001", Status::Open, vec![]);
+        let claimed = mk_issue(
+            "0000002",
+            Status::InProgress,
+            vec![parent_child_edge("0000001")],
+        );
+        let all = vec![epic, claimed];
+
+        let progress = epic_progress_from_issues(&iid("0000001"), &all);
+        assert_eq!(progress.total, 1);
+        assert_eq!(progress.done, 0, "in-progress is not done");
+        assert_eq!(progress.in_progress, 1);
+    }
+
+    #[test]
+    fn epic_progress_counts_abandoned_as_not_done() {
+        let epic = mk_issue("0000001", Status::Open, vec![]);
+        let abandoned = mk_issue(
+            "0000002",
+            Status::Abandoned,
+            vec![parent_child_edge("0000001")],
+        );
+        let all = vec![epic, abandoned];
+
+        let progress = epic_progress_from_issues(&iid("0000001"), &all);
+        assert_eq!(progress.total, 1, "abandoned still counts toward the denominator");
+        assert_eq!(progress.done, 0);
+    }
+
+    #[test]
+    fn epic_progress_handles_cycles_without_double_counting() {
+        // a -> b -> a (parent-child cycle). Root is "0000001".
+        let a = mk_issue("0000001", Status::Open, vec![parent_child_edge("0000002")]);
+        let b = mk_issue("0000002", Status::Closed, vec![parent_child_edge("0000001")]);
+        let all = vec![a, b];
+
+        let progress = epic_progress_from_issues(&iid("0000001"), &all);
+        // Must terminate (no infinite loop) and not double-count.
+        assert!(progress.total <= 2);
+    }
+
+    #[test]
+    fn epic_progress_zero_leaves_is_zero_over_zero() {
+        let epic = mk_issue("0000001", Status::Open, vec![]);
+        let all = vec![epic];
+
+        let progress = epic_progress_from_issues(&iid("0000001"), &all);
+        assert_eq!(progress.total, 0);
+        assert_eq!(progress.done, 0);
     }
 }
 
