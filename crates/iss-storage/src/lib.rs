@@ -1496,7 +1496,7 @@ pub struct DepTree {
 /// node contributes nothing directly — its own leaves do. A leaf
 /// carrying the label `optional` is excluded from `done`/`total` and
 /// tracked separately in `optional_total`/`optional_done`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct EpicProgress {
     pub done: usize,
     pub total: usize,
@@ -4678,6 +4678,7 @@ Jjf-Label: fixed
             comments: vec![],
             created_at: "2026-06-22T12:00:00Z".into(),
             updated_at: "2026-06-22T12:00:00Z".into(),
+            progress: None,
         }
     }
 

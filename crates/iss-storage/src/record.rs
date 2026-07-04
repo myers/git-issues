@@ -12,6 +12,7 @@ use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 
 use crate::id::IssueId;
+use crate::EpicProgress;
 
 /// Coarse classifier on a dependency edge (spec v2.4 §3.x, added in
 /// `agent-dep-types`). Each edge between two issues carries one of
@@ -590,4 +591,13 @@ pub struct Issue {
     pub comments: Vec<Comment>,
     pub created_at: String,
     pub updated_at: String,
+    /// Completion summary for this issue's `parent-child` leaf
+    /// descendants — populated ONLY when `type_ == IssueType::Epic`,
+    /// and only by `run_show` at display time (never persisted;
+    /// `#[serde(default)]` means old on-disk records and every other
+    /// code path that builds an `Issue` without this field still
+    /// deserialize/construct fine). `None` for every non-epic issue,
+    /// and `None` by default for epics until `run_show` fills it in.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub progress: Option<EpicProgress>,
 }

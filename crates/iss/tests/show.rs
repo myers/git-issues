@@ -436,3 +436,76 @@ fn show_plain_omits_metadata_when_empty() {
         "plain text should OMIT `metadata:` when empty; got:\n{stdout}"
     );
 }
+
+#[test]
+fn show_plain_embeds_progress_line_for_epic() {
+    let repo = make_initialized_repo("show_progress_epic");
+    let epic_id = create_issue(&repo, "Epic: test", b"", &["--type", "epic"]);
+    let child_id = create_issue(&repo, "child", b"", &[]);
+    run_iss(&repo, &["dep", "add", &child_id, &epic_id, "--kind", "parent-child"]);
+    run_iss(&repo, &["close", &child_id]);
+
+    let out = run_iss(&repo, &["show", &epic_id]);
+    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("progress:"),
+        "epic show should include a progress line, got: {stdout}"
+    );
+    assert!(stdout.contains("1/1"), "got: {stdout}");
+}
+
+#[test]
+fn show_plain_omits_progress_line_for_non_epic() {
+    let repo = make_initialized_repo("show_progress_non_epic");
+    let bug_id = create_issue(&repo, "a bug", b"", &["--type", "bug"]);
+
+    let out = run_iss(&repo, &["show", &bug_id]);
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !stdout.contains("progress:"),
+        "non-epic show should NOT include a progress line, got: {stdout}"
+    );
+}
+
+#[test]
+fn show_json_includes_progress_for_epic() {
+    let repo = make_initialized_repo("show_progress_json_epic");
+    let epic_id = create_issue(&repo, "Epic: test", b"", &["--type", "epic"]);
+    let child_id = create_issue(&repo, "child", b"", &[]);
+    run_iss(&repo, &["dep", "add", &child_id, &epic_id, "--kind", "parent-child"]);
+
+    let out = run_iss(&repo, &["show", "--json", &epic_id]);
+    assert!(out.status.success());
+    let v: serde_json::Value =
+        serde_json::from_str(&String::from_utf8_lossy(&out.stdout)).expect("valid JSON");
+    assert_eq!(v["progress"]["total"], 1);
+    assert_eq!(v["progress"]["done"], 0);
+}
+
+#[test]
+fn show_json_omits_progress_key_for_non_epic() {
+    let repo = make_initialized_repo("show_progress_json_non_epic");
+    let bug_id = create_issue(&repo, "a bug", b"", &["--type", "bug"]);
+
+    let out = run_iss(&repo, &["show", "--json", &bug_id]);
+    assert!(out.status.success());
+    let v: serde_json::Value =
+        serde_json::from_str(&String::from_utf8_lossy(&out.stdout)).expect("valid JSON");
+    assert!(
+        v.get("progress").is_none(),
+        "non-epic JSON should have no progress key at all, got: {v}"
+    );
+}
+
+#[test]
+fn show_plain_zero_children_epic_shows_zero_over_zero() {
+    let repo = make_initialized_repo("show_progress_empty_epic");
+    let epic_id = create_issue(&repo, "Epic: empty", b"", &["--type", "epic"]);
+
+    let out = run_iss(&repo, &["show", &epic_id]);
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("0/0"), "got: {stdout}");
+}

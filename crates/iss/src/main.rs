@@ -2440,7 +2440,13 @@ fn run_show(json: bool, id: String, include_memories: bool) -> Result<(), CliErr
 
     // 4. Hand off to storage. `IssueNotFound` flows out as a `Storage`
     // variant of `CliError`, which `exit_code` maps to 1.
-    let issue = storage.read(&issue_id)?;
+    let mut issue = storage.read(&issue_id)?;
+
+    // 4b. Epics get a computed progress summary — never persisted,
+    // populated here at display time only.
+    if issue.type_ == IssueType::Epic {
+        issue.progress = Some(storage.epic_progress(&issue.id)?);
+    }
 
     // 5. Render.
     if json {
@@ -2760,6 +2766,13 @@ fn print_issue_plain(issue: &Issue) {
                 println!("  {}: {}", kind.as_show_label(), targets.join(", "));
             }
         }
+    }
+    // Epic progress: one line, only when the issue is an epic AND
+    // `progress` was populated by the caller (run_show). Non-epic
+    // issues never have this field set, so the line is naturally
+    // absent for them.
+    if let Some(progress) = &issue.progress {
+        println!("{}", render_epic_progress_line(progress));
     }
     println!(
         "created: {}   updated: {}",

@@ -120,6 +120,7 @@ pub(crate) fn read(git: &GitRepo, id: &IssueId) -> Result<Issue> {
         comments,
         created_at: record.created_at,
         updated_at: record.updated_at,
+        progress: None,
     })
 }
 

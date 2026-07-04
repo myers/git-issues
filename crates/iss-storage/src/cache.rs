@@ -574,6 +574,7 @@ pub(crate) fn rebuild_v3(git: &GitRepo, key: &str) -> Result<SnapshotCache> {
             comments,
             created_at: record.created_at,
             updated_at: record.updated_at,
+            progress: None,
         });
     }
 
@@ -693,6 +694,7 @@ mod tests {
             comments: Vec::new(),
             created_at: "2026-01-01T00:00:00Z".into(),
             updated_at: "2026-01-01T00:00:00Z".into(),
+            progress: None,
         };
         let issue_b = Issue {
             slug: None,
@@ -737,6 +739,7 @@ mod tests {
             comments: Vec::new(),
             created_at: "2026-01-01T00:00:00Z".into(),
             updated_at: "2026-01-01T00:00:00Z".into(),
+            progress: None,
         };
         let closed_issue = Issue {
             id: id_closed.clone(),
