@@ -42,9 +42,9 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand, ValueEnum};
 use iss_storage::{
     DEFAULT_SNIPPET_CONTEXT, ISSUES_BOOKMARK, ClaimResult, DepEdge, DepKind, DepTreeNode,
-    Error as StorageError, IdError, BodyInvalidReason, Issue, IssueDraft, IssueId, IssueType,
-    Memory, PriorityInvalidReason, ReadyFilter, SearchHit, SlugInvalidReason, StaleHit, Status,
-    Storage, TitleInvalidReason,
+    EpicProgress, Error as StorageError, IdError, BodyInvalidReason, Issue, IssueDraft, IssueId,
+    IssueType, Memory, PriorityInvalidReason, ReadyFilter, SearchHit, SlugInvalidReason, StaleHit,
+    Status, Storage, TitleInvalidReason,
     UnreadableRef, UpdateFields, validate_priority,
 };
 
@@ -1137,6 +1137,16 @@ enum DepAction {
         /// Root issue (id-or-slug).
         id: String,
     },
+    /// Print a one-line completion bar for the `parent-child` tree
+    /// rooted at `<id>`. Only LEAF descendants count (an
+    /// intermediate node with its own children contributes nothing
+    /// directly). A leaf labeled `optional` is excluded from the
+    /// ratio and reported separately. `--json` emits the bare
+    /// `EpicProgress` object, no envelope.
+    Progress {
+        /// Root issue (id-or-slug).
+        id: String,
+    },
 }
 
 /// Inner enum for `iss remote <action>`. Same shape rationale as
@@ -2048,6 +2058,7 @@ fn run(cli: Cli) -> Result<(), CliError> {
                 run_dep(cli.json, child, parent, kind.into(), DepOp::Rm)
             }
             DepAction::Tree { id } => run_dep_tree(cli.json, id),
+            DepAction::Progress { id } => run_dep_progress(cli.json, id),
         },
         Commands::Remote { action } => match action {
             RemoteAction::Add { name, url } => run_remote_add(cli.json, name, url),
@@ -3165,6 +3176,63 @@ fn run_dep_tree(json: bool, id: String) -> Result<(), CliError> {
         render_dep_tree_text(&tree.root, 0);
     }
     Ok(())
+}
+
+fn run_dep_progress(json: bool, id: String) -> Result<(), CliError> {
+    let cwd: PathBuf = std::env::current_dir().map_err(CliError::Cwd)?;
+    let cwd = std::fs::canonicalize(&cwd).map_err(CliError::Cwd)?;
+    preflight::require_initialized(&cwd)?;
+
+    let storage = Storage::open(&cwd)?;
+    let root_id = resolve_handle(&storage, &id)?;
+    let progress = storage.epic_progress(&root_id)?;
+    if json {
+        let payload = serde_json::to_string(&progress)
+            .expect("EpicProgress serializes — derive contract");
+        println!("{payload}");
+    } else {
+        println!("{}", render_epic_progress_line(&progress));
+    }
+    Ok(())
+}
+
+/// Render one line: `progress: [<bar>] <done>/<total> (<pct>%)  <extras>`.
+/// Fixed 20-cell bar width, no color. Used by both `iss dep progress`
+/// and the embedded line in `iss show <epic>`.
+fn render_epic_progress_line(progress: &EpicProgress) -> String {
+    const WIDTH: usize = 20;
+    let filled = if progress.total > 0 {
+        ((progress.done as f64 / progress.total as f64) * WIDTH as f64).round() as usize
+    } else {
+        0
+    };
+    let bar: String = "█".repeat(filled) + &"░".repeat(WIDTH - filled);
+    let pct = if progress.total > 0 {
+        ((progress.done as f64 / progress.total as f64) * 100.0).round() as usize
+    } else {
+        0
+    };
+    let mut line = format!(
+        "progress: [{}] {}/{} ({}%)",
+        bar, progress.done, progress.total, pct
+    );
+    let mut extras: Vec<String> = Vec::new();
+    if progress.in_progress > 0 {
+        extras.push(format!("{} in-progress", progress.in_progress));
+    }
+    if progress.optional_total > 0 {
+        let pending = progress.optional_total - progress.optional_done;
+        if pending > 0 {
+            extras.push(format!("+{pending} optional"));
+        } else {
+            extras.push(format!("{} optional done", progress.optional_total));
+        }
+    }
+    if !extras.is_empty() {
+        line.push_str("  ");
+        line.push_str(&extras.join(" · "));
+    }
+    line
 }
 
 /// Indent-by-2-spaces text rendering of a `DepTree`. Each level

@@ -23,8 +23,12 @@ use std::path::Path;
 mod common;
 use common::*;
 
-fn create_issue(repo: &Path, title: &str) -> String {
-    let out = run_iss_with_stdin(repo, &["new", "-t", title, "-F", "-"], b"");
+/// Create an issue via `iss new`, return its id. `extra` is appended
+/// after the title flag (e.g. `&["--type", "epic"]`).
+fn create_issue(repo: &Path, title: &str, extra: &[&str]) -> String {
+    let mut args: Vec<&str> = vec!["new", "-t", title, "-F", "-"];
+    args.extend_from_slice(extra);
+    let out = run_iss_with_stdin(repo, &args, b"");
     assert!(
         out.status.success(),
         "iss new failed during setup: code={:?} stderr={}",
@@ -39,8 +43,8 @@ fn create_issue(repo: &Path, title: &str) -> String {
 #[test]
 fn dep_add_default_kind_blocks_show_reports_edge() {
     let repo = make_initialized_repo("dep_add_default");
-    let parent = create_issue(&repo, "parent");
-    let child = create_issue(&repo, "child");
+    let parent = create_issue(&repo, "parent", &[]);
+    let child = create_issue(&repo, "child", &[]);
 
     let out = run_iss(&repo, &["dep", "add", &child, &parent]);
     assert!(
@@ -73,8 +77,8 @@ fn dep_add_default_kind_blocks_show_reports_edge() {
 #[test]
 fn dep_add_all_four_kinds_round_trip() {
     let repo = make_initialized_repo("dep_all_kinds");
-    let parent = create_issue(&repo, "parent");
-    let child = create_issue(&repo, "child");
+    let parent = create_issue(&repo, "parent", &[]);
+    let child = create_issue(&repo, "child", &[]);
 
     for kind in &["blocks", "parent-child", "related", "discovered-from"] {
         let out = run_iss(&repo, &["dep", "add", &child, &parent, "--kind", kind]);
@@ -101,8 +105,8 @@ fn dep_add_all_four_kinds_round_trip() {
 #[test]
 fn dep_rm_removes_only_named_kind() {
     let repo = make_initialized_repo("dep_rm_kind");
-    let parent = create_issue(&repo, "parent");
-    let child = create_issue(&repo, "child");
+    let parent = create_issue(&repo, "parent", &[]);
+    let child = create_issue(&repo, "child", &[]);
 
     // Add two kinds pointing at the same target.
     let out = run_iss(&repo, &["dep", "add", &child, &parent, "--kind", "blocks"]);
@@ -143,9 +147,9 @@ fn dep_rm_removes_only_named_kind() {
 #[test]
 fn dep_tree_prints_parent_child_hierarchy() {
     let repo = make_initialized_repo("dep_tree");
-    let a = create_issue(&repo, "epic A");
-    let b = create_issue(&repo, "child B");
-    let c = create_issue(&repo, "grandchild C");
+    let a = create_issue(&repo, "epic A", &[]);
+    let b = create_issue(&repo, "child B", &[]);
+    let c = create_issue(&repo, "grandchild C", &[]);
 
     // B is child of A; C is child of B.
     let out = run_iss(&repo, &["dep", "add", &b, &a, "--kind", "parent-child"]);
@@ -171,8 +175,8 @@ fn dep_tree_prints_parent_child_hierarchy() {
 #[test]
 fn dep_tree_json_envelope_carries_nested_structure() {
     let repo = make_initialized_repo("dep_tree_json");
-    let a = create_issue(&repo, "epic A");
-    let b = create_issue(&repo, "child B");
+    let a = create_issue(&repo, "epic A", &[]);
+    let b = create_issue(&repo, "child B", &[]);
 
     let out = run_iss(&repo, &["dep", "add", &b, &a, "--kind", "parent-child"]);
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
@@ -191,7 +195,7 @@ fn dep_tree_json_envelope_carries_nested_structure() {
 fn new_with_inline_dep_kind_syntax() {
     // `iss new --dep parent-child:<id>` produces a parent-child edge.
     let repo = make_initialized_repo("new_inline_kind");
-    let parent = create_issue(&repo, "parent");
+    let parent = create_issue(&repo, "parent", &[]);
     let spec = format!("parent-child:{parent}");
 
     let out = run_iss_with_stdin(
@@ -223,7 +227,7 @@ fn new_with_inline_dep_kind_syntax() {
 fn new_with_unknown_dep_kind_is_preflight_failure() {
     // `iss new --dep bogus:<id>` exits 2 with `bad_dep_kind`.
     let repo = make_initialized_repo("new_bad_dep_kind");
-    let parent = create_issue(&repo, "parent");
+    let parent = create_issue(&repo, "parent", &[]);
     let spec = format!("bogus:{parent}");
 
     let out = run_iss_with_stdin(
@@ -246,7 +250,7 @@ fn new_with_unknown_dep_kind_is_preflight_failure() {
 #[test]
 fn dep_add_phantom_target_exits_with_issue_not_found() {
     let repo = make_initialized_repo("dep_add_phantom_target");
-    let child = create_issue(&repo, "child");
+    let child = create_issue(&repo, "child", &[]);
     // `deadbee` is a well-formed 7-hex id that has never existed.
     let out = run_iss(&repo, &["--json", "dep", "add", &child, "deadbee"]);
     // `issue_not_found` is exit 1 (runtime) per the established
@@ -278,7 +282,7 @@ fn dep_add_phantom_target_exits_with_issue_not_found() {
 #[test]
 fn dep_add_self_target_exits_2_with_self_dependency() {
     let repo = make_initialized_repo("dep_add_self_target");
-    let child = create_issue(&repo, "self-targeted");
+    let child = create_issue(&repo, "self-targeted", &[]);
     let out = run_iss(&repo, &["--json", "dep", "add", &child, &child]);
     assert_eq!(
         out.status.code(),
@@ -304,7 +308,7 @@ fn dep_add_self_target_exits_2_with_self_dependency() {
 #[test]
 fn dep_add_self_target_rejected_for_all_kinds() {
     let repo = make_initialized_repo("dep_add_self_all_kinds");
-    let child = create_issue(&repo, "all-kinds-self");
+    let child = create_issue(&repo, "all-kinds-self", &[]);
     for kind in &["blocks", "parent-child", "related", "discovered-from"] {
         let out = run_iss(
             &repo,
@@ -405,7 +409,7 @@ fn dep_rm_against_phantom_target_succeeds_as_noop() {
     // non-existent edge is a useful cleanup primitive. Don't
     // adopt the strict validation here.
     let repo = make_initialized_repo("dep_rm_phantom_noop");
-    let child = create_issue(&repo, "real child");
+    let child = create_issue(&repo, "real child", &[]);
     let out = run_iss(&repo, &["dep", "rm", &child, "deadbee"]);
     assert!(
         out.status.success(),
@@ -421,9 +425,9 @@ fn ready_excludes_child_of_blocked_parent_via_cascade() {
     // child (open, child of parent). `iss ready` should exclude
     // both parent (blocked by blocker) and child (cascaded).
     let repo = make_initialized_repo("ready_cascade");
-    let blocker = create_issue(&repo, "blocker");
-    let parent = create_issue(&repo, "parent");
-    let child = create_issue(&repo, "child");
+    let blocker = create_issue(&repo, "blocker", &[]);
+    let parent = create_issue(&repo, "parent", &[]);
+    let child = create_issue(&repo, "child", &[]);
 
     // parent blocks-edge to blocker
     let out = run_iss(
@@ -463,9 +467,9 @@ fn ready_excludes_child_of_blocked_parent_via_cascade() {
 #[test]
 fn dep_add_blocks_cycle_exits_2_with_dependency_cycle() {
     let repo = make_initialized_repo("dep_add_cycle");
-    let a = create_issue(&repo, "A");
-    let b = create_issue(&repo, "B");
-    let c = create_issue(&repo, "C");
+    let a = create_issue(&repo, "A", &[]);
+    let b = create_issue(&repo, "B", &[]);
+    let c = create_issue(&repo, "C", &[]);
 
     // A -> B, B -> C. Then C -> A would close the cycle.
     let out = run_iss(&repo, &["dep", "add", &a, &b]);
@@ -518,8 +522,8 @@ fn show_text_uses_blocked_by_label_for_blocks_edge() {
     // storage semantics say "child is blocked until parent closes".
     // The text-mode `show` label must read that way to a human.
     let repo = make_initialized_repo("show_blocked_by_label");
-    let parent = create_issue(&repo, "parent");
-    let child = create_issue(&repo, "child");
+    let parent = create_issue(&repo, "parent", &[]);
+    let child = create_issue(&repo, "child", &[]);
 
     let out = run_iss(&repo, &["dep", "add", &child, &parent, "--kind", "blocks"]);
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
@@ -546,8 +550,8 @@ fn show_json_dependencies_kind_field_stays_wire_spelling() {
     // `--json` output is the wire contract scripts and remotes
     // depend on; the per-edge `kind` field stays kebab-case.
     let repo = make_initialized_repo("show_json_dep_kind_wire");
-    let parent = create_issue(&repo, "parent");
-    let child = create_issue(&repo, "child");
+    let parent = create_issue(&repo, "parent", &[]);
+    let child = create_issue(&repo, "child", &[]);
 
     let out = run_iss(&repo, &["dep", "add", &child, &parent, "--kind", "blocks"]);
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
@@ -563,4 +567,52 @@ fn show_json_dependencies_kind_field_stays_wire_spelling() {
         "JSON shape must keep the wire spelling, got: {stdout}"
     );
     assert_eq!(deps[0]["target"], parent.as_str());
+}
+
+#[test]
+fn dep_progress_counts_leaves_and_renders_bar() {
+    let repo = make_initialized_repo("dep_progress_basic");
+    let epic_id = create_issue(&repo, "Epic: test", &["--type", "epic"]);
+    let child1 = create_issue(&repo, "child one", &[]);
+    let child2 = create_issue(&repo, "child two", &[]);
+
+    run_iss(&repo, &["dep", "add", &child1, &epic_id, "--kind", "parent-child"]);
+    run_iss(&repo, &["dep", "add", &child2, &epic_id, "--kind", "parent-child"]);
+    run_iss(&repo, &["close", &child1]);
+
+    let out = run_iss(&repo, &["dep", "progress", &epic_id]);
+    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("1/2"), "expected 1/2 in output, got: {stdout}");
+    assert!(stdout.contains("50%"), "expected 50%, got: {stdout}");
+}
+
+#[test]
+fn dep_progress_json_shape() {
+    let repo = make_initialized_repo("dep_progress_json");
+    let epic_id = create_issue(&repo, "Epic: test", &["--type", "epic"]);
+    let child1 = create_issue(&repo, "child one", &[]);
+    run_iss(&repo, &["dep", "add", &child1, &epic_id, "--kind", "parent-child"]);
+    run_iss(&repo, &["close", &child1]);
+
+    let out = run_iss(&repo, &["dep", "progress", "--json", &epic_id]);
+    assert!(out.status.success());
+    let v: serde_json::Value =
+        serde_json::from_str(&String::from_utf8_lossy(&out.stdout)).expect("valid JSON");
+    assert_eq!(v["done"], 1);
+    assert_eq!(v["total"], 1);
+    assert_eq!(v["in_progress"], 0);
+    assert_eq!(v["optional_total"], 0);
+    assert_eq!(v["optional_done"], 0);
+}
+
+#[test]
+fn dep_progress_zero_children_is_zero_over_zero() {
+    let repo = make_initialized_repo("dep_progress_empty");
+    let epic_id = create_issue(&repo, "Epic: empty", &["--type", "epic"]);
+
+    let out = run_iss(&repo, &["dep", "progress", &epic_id]);
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("0/0"), "expected 0/0, got: {stdout}");
 }
